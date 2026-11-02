@@ -1,0 +1,38 @@
+name: Daily radar refresh
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 13 * * *'
+permissions:
+  contents: write
+concurrency:
+  group: radar-refresh
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fetch configured authorized feeds
+        env:
+          RADAR_TIKTOK_URL: ${{ secrets.RADAR_TIKTOK_URL }}
+          RADAR_DUBSTEP_URL: ${{ secrets.RADAR_DUBSTEP_URL }}
+          RADAR_HOUSE_URL: ${{ secrets.RADAR_HOUSE_URL }}
+          RADAR_GLOBAL_URL: ${{ secrets.RADAR_GLOBAL_URL }}
+          RADAR_TIKTOK_TOKEN: ${{ secrets.RADAR_TIKTOK_TOKEN }}
+          RADAR_DUBSTEP_TOKEN: ${{ secrets.RADAR_DUBSTEP_TOKEN }}
+          RADAR_HOUSE_TOKEN: ${{ secrets.RADAR_HOUSE_TOKEN }}
+          RADAR_GLOBAL_TOKEN: ${{ secrets.RADAR_GLOBAL_TOKEN }}
+        run: python refresh.py
+      - name: Commit updated snapshots
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A data history
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update daily chart snapshots'
+            git push
+          fi
